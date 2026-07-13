@@ -61,6 +61,43 @@ Lines loadFile(const std::string& filename)
     return buffer;
 }
 
+void handleKeypress(char& c, int& cursorX, int& cursorY, Lines& buffer)
+{
+    if (c == '\r' || c == '\n')
+    {
+        std::string currentLine = buffer[cursorY];
+        std::string nextLine = currentLine.substr(cursorX);
+
+        buffer[cursorY] = currentLine.substr(0, cursorX);
+        buffer.insert(buffer.begin() + cursorY + 1, nextLine);
+
+        cursorY++;
+        cursorX = 0;
+    }
+    else if (c == 127 || c == '\b')
+    {
+        if (cursorX > 0)
+        {
+            buffer[cursorY].erase(cursorX - 1, 1);
+            cursorX--;
+        }
+        else if (cursorY > 0)
+        {
+            int prevLineLength = buffer[cursorY - 1].length();
+            buffer[cursorY - 1] += buffer[cursorY];
+            buffer.erase(buffer.begin() + cursorY);
+
+            cursorY--;
+            cursorX = prevLineLength;
+        }
+    }
+    else if (c >= 32 && c <= 126)
+    {
+        buffer[cursorY].insert(cursorX, 1, c);
+        cursorX++;
+    }
+}
+
 int main() 
 {
     enableRawMode();
@@ -77,39 +114,8 @@ int main()
         if (read(STDIN_FILENO, &c, 1) != 1) continue;
         if (c == 17) break;
 
-        if (c == '\r' || c == '\n')
-        {
-            std::string currentLine = buffer[cursorY];
-            std::string nextLine = currentLine.substr(cursorX);
+        handleKeypress(c, cursorX, cursorY, buffer);
 
-            buffer[cursorY] = currentLine.substr(0, cursorX);
-            buffer.insert(buffer.begin() + cursorY + 1, nextLine);
-
-            cursorY++;
-            cursorX = 0;
-        }
-        else if (c == 127 || c == '\b')
-        {
-            if (cursorX > 0)
-            {
-                buffer[cursorY].erase(cursorX - 1, 1);
-                cursorX--;
-            }
-            else if (cursorY > 0)
-            {
-                int prevLineLength = buffer[cursorY - 1].length();
-                buffer[cursorY - 1] += buffer[cursorY];
-                buffer.erase(buffer.begin() + cursorY);
-
-                cursorY--;
-                cursorX = prevLineLength;
-            }
-        }
-        else if (c >= 32 && c <= 126)
-        {
-            buffer[cursorY].insert(cursorX, 1, c);
-            cursorX++;
-        }
     }
 
     std::cout << "\x1b[2J\x1b[H" << std::flush;
