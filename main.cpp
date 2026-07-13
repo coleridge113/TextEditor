@@ -25,20 +25,19 @@ void enableRawMode()
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
 
-void renderScreen(const Lines& buffer) 
+void renderScreen(const Lines& buffer, int cursorX, int cursorY)
 {
-    std::cout << "\x1b[2J";
-    std::cout << "\x1b[H";
+    std::cout << "\x1b[?25l";
+    std::cout << "\x1b[2J\x1b[H";
 
     for (size_t i = 0; i < buffer.size(); ++i)
     {
         std::cout << buffer[i];
-
-        if (i < buffer.size() - 1)
-            std::cout << '\n';
+        if (i < buffer.size() - 1) std::cout << "\r\n";
     }
 
-    std::cout << std::flush;
+    std::cout << "\x1b[" << (cursorY + 1) << ";" << (cursorX + 1) << "H";
+    std::cout << "\x1b[?25h" << std::flush;
 }
 
 Lines loadFile(const std::string& filename)
@@ -66,19 +65,54 @@ int main()
 {
     enableRawMode();
 
-    std::cout << "Now in raw mode" << '\n';
-    std::cout << "Press 'q' to quite" << '\n';
+    Lines buffer = {""};
+    int cursorX = 0;
+    int cursorY = 0;
 
-    char c;
-
-    while (read(STDIN_FILENO, &c, 1) == 1 && c != 'q')
+    while (true) 
     {
-        std::cout << "You pressed: " << c << " (ASCII: " << (int)c << ")\r\n";
+        renderScreen(buffer, cursorX, cursorY);
+
+        char c;
+        if (read(STDIN_FILENO, &c, 1) != 1) continue;
+        if (c == 17) break;
+
+        if (c == '\r' || c == '\n')
+        {
+            std::string currentLine = buffer[cursorY];
+            std::string nextLine = currentLine.substr(cursorX);
+
+            buffer[cursorY] = currentLine.substr(0, cursorX);
+            buffer.insert(buffer.begin() + cursorY + 1, nextLine);
+
+            cursorY++;
+            cursorX = 0;
+        }
+        else if (c == 127 || c == '\b')
+        {
+            if (cursorX > 0)
+            {
+                buffer[cursorY].erase(cursorX - 1, 1);
+                cursorX--;
+            }
+            else if (cursorY > 0)
+            {
+                int prevLineLength = buffer[cursorY - 1].length();
+                buffer[cursorY - 1] += buffer[cursorY];
+                buffer.erase(buffer.begin() + cursorY);
+
+                cursorY--;
+                cursorX = prevLineLength;
+            }
+        }
+        else if (c >= 32 && c <= 126)
+        {
+            buffer[cursorY].insert(cursorX, 1, c);
+            cursorX++;
+        }
     }
 
-    // std::string targetFile = "test.txt";
-    // Lines editorBuffer = loadFile(targetFile);
-    // renderScreen(editorBuffer);
+    std::cout << "\x1b[2J\x1b[H" << std::flush;
 
     return 0;
 }
