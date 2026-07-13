@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -21,7 +22,7 @@ void enableRawMode()
     atexit(disableRawMode);
 
     struct termios raw = orig_termios;
-    raw.c_cflag &= ~(ECHO | ICANON);
+    raw.c_lflag &= ~(ECHO | ICANON);
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
 
@@ -63,6 +64,7 @@ Lines loadFile(const std::string& filename)
 
 void handleKeypress(char& c, int& cursorX, int& cursorY, Lines& buffer)
 {
+    // handle return / newline
     if (c == '\r' || c == '\n')
     {
         std::string currentLine = buffer[cursorY];
@@ -74,6 +76,7 @@ void handleKeypress(char& c, int& cursorX, int& cursorY, Lines& buffer)
         cursorY++;
         cursorX = 0;
     }
+    // handle backspace
     else if (c == 127 || c == '\b')
     {
         if (cursorX > 0)
@@ -91,10 +94,44 @@ void handleKeypress(char& c, int& cursorX, int& cursorY, Lines& buffer)
             cursorX = prevLineLength;
         }
     }
+    // handle standard alphanumerical characters
     else if (c >= 32 && c <= 126)
     {
         buffer[cursorY].insert(cursorX, 1, c);
         cursorX++;
+    }
+    // handle arrow keys
+    else if (c == '\x1b')
+    {
+        char seq[3];
+        if (read(STDIN_FILENO, &seq[0], 1) != 1) return;
+        if (read(STDIN_FILENO, &seq[1], 1) != 1) return;
+
+        if (seq[0] == '[')
+        {
+            switch (seq[1])
+            {
+                case 'A':   // up arrow
+                    if (cursorY > 0) cursorY--;
+                    break;
+                case 'B':   // down arrow
+                    if (cursorY < static_cast<int>(buffer.size() - 1)) cursorY++;
+                    break;
+                case 'C':   // right arrow
+                    if (cursorX < static_cast<int>(buffer[cursorY].length())) cursorX++;
+                    break;
+                case 'D':   // left arrow
+                    if (cursorX > 0) cursorX--;
+                    break;
+            }
+
+            if (cursorX > static_cast<int>(buffer[cursorY].length()))
+            {
+                cursorX = buffer[cursorY].length();
+            }
+
+            return;
+        }
     }
 }
 
