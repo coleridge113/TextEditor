@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-using Lines = std::vector<std::string>;
+using Buffer = std::vector<std::string>;
 
 struct termios orig_termios;
 
@@ -26,7 +26,7 @@ void enableRawMode()
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
 
-void renderScreen(const Lines& buffer, int cursorX, int cursorY)
+void renderScreen(const Buffer& buffer, int cursorX, int cursorY)
 {
     std::cout << "\x1b[?25l";
     std::cout << "\x1b[2J\x1b[H";
@@ -41,9 +41,9 @@ void renderScreen(const Lines& buffer, int cursorX, int cursorY)
     std::cout << "\x1b[?25h" << std::flush;
 }
 
-Lines loadFile(const std::string& filename)
+Buffer loadFile(const std::string& filename)
 {
-    Lines buffer;
+    Buffer buffer;
     std::ifstream file(filename);
 
     if (!file.is_open())
@@ -62,7 +62,7 @@ Lines loadFile(const std::string& filename)
     return buffer;
 }
 
-void saveFile(const std::string& filename, const Lines& buffer)
+void saveFile(const std::string& filename, const Buffer& buffer)
 {
     std::ofstream file(filename);
 
@@ -79,7 +79,7 @@ void saveFile(const std::string& filename, const Lines& buffer)
     file.close();
 }
 
-void handleKeypress(char& c, int& cursorX, int& cursorY, Lines& buffer)
+void handleKeypress(char& c, int& cursorX, int& cursorY, Buffer& buffer)
 {
     // handle return / newline
     if (c == '\r' || c == '\n')
@@ -156,7 +156,7 @@ int main()
 {
     enableRawMode();
 
-    Lines buffer = loadFile("test.txt");
+    Buffer buffer = loadFile("test.txt");
     int cursorX = 0;
     int cursorY = 0;
 
