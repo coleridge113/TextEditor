@@ -1,11 +1,14 @@
+#include <atomic>
 #include <cstdio>
 #include <iostream>
 #include <fstream>
+#include <ostream>
 #include <vector>
 #include <string>
 #include <termios.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <csignal>
 
 using Buffer = std::vector<std::string>;
 
@@ -59,6 +62,7 @@ Buffer loadFile(const std::string& filename)
     }
 
     file.close();
+
     return buffer;
 }
 
@@ -72,8 +76,7 @@ void saveFile(const std::string& filename, const Buffer& buffer)
     {
         file << buffer[i];
 
-        if (i < buffer.size() - 1)
-            file << '\n';
+        if (i < buffer.size() - 1) file << '\n';
     }
 
     file.close();
@@ -118,7 +121,7 @@ void handleKeypress(char& c, int& cursorX, int& cursorY, Buffer& buffer)
         cursorX++;
     }
     // handle arrow keys
-    else if (c == '\x1b')
+    else if (c == '\x1b') // read esc character
     {
         char seq[2];
         if (read(STDIN_FILENO, &seq[0], 1) != 1) return;
@@ -152,15 +155,23 @@ void handleKeypress(char& c, int& cursorX, int& cursorY, Buffer& buffer)
     }
 }
 
+std::atomic<bool> quitRequested{false};
+
+void signalHandler([[maybe_unused]] int signum)
+{
+    quitRequested = true;
+}
+
 int main() 
 {
+    std::signal(SIGINT, signalHandler);
     enableRawMode();
 
     Buffer buffer = loadFile("test.txt");
     int cursorX = 0;
     int cursorY = 0;
 
-    while (true) 
+    while (!quitRequested) 
     {
         renderScreen(buffer, cursorX, cursorY);
 
@@ -173,11 +184,17 @@ int main()
             break;
         }
 
+        std::cout << "Received char: " << c << "\r\n";
+        std::cout << std::flush;
+
         handleKeypress(c, cursorX, cursorY, buffer);
 
     }
 
     std::cout << "\x1b[2J\x1b[H" << std::flush;
+
+    saveFile("test.txt", buffer);
+    disableRawMode();
 
     return 0;
 }
