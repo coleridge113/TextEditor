@@ -103,7 +103,7 @@ void handleKeypress(char& c, int& cursorX, int& cursorY, Lines& buffer)
     // handle arrow keys
     else if (c == '\x1b')
     {
-        char seq[3];
+        char seq[2];
         if (read(STDIN_FILENO, &seq[0], 1) != 1) return;
         if (read(STDIN_FILENO, &seq[1], 1) != 1) return;
 
