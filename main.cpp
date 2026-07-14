@@ -62,6 +62,23 @@ Lines loadFile(const std::string& filename)
     return buffer;
 }
 
+void saveFile(const std::string& filename, const Lines& buffer)
+{
+    std::ofstream file(filename);
+
+    if (!file.is_open()) return;
+
+    for (size_t i = 0; i < buffer.size(); ++i)
+    {
+        file << buffer[i];
+
+        if (i < buffer.size() - 1)
+            file << '\n';
+    }
+
+    file.close();
+}
+
 void handleKeypress(char& c, int& cursorX, int& cursorY, Lines& buffer)
 {
     // handle return / newline
@@ -115,10 +132,10 @@ void handleKeypress(char& c, int& cursorX, int& cursorY, Lines& buffer)
                     if (cursorY > 0) cursorY--;
                     break;
                 case 'B':   // down arrow
-                    if (cursorY < static_cast<int>(buffer.size() - 1)) cursorY++;
+                    if (cursorY < static_cast<int>(buffer.size() - 1)) ++cursorY;
                     break;
                 case 'C':   // right arrow
-                    if (cursorX < static_cast<int>(buffer[cursorY].length())) cursorX++;
+                    if (cursorX < static_cast<int>(buffer[cursorY].length())) ++cursorX;
                     break;
                 case 'D':   // left arrow
                     if (cursorX > 0) cursorX--;
@@ -139,7 +156,7 @@ int main()
 {
     enableRawMode();
 
-    Lines buffer = {""};
+    Lines buffer = loadFile("test.txt");
     int cursorX = 0;
     int cursorY = 0;
 
@@ -150,6 +167,11 @@ int main()
         char c;
         if (read(STDIN_FILENO, &c, 1) != 1) continue;
         if (c == 17) break;
+        if (c == 19)
+        {
+            saveFile("test.txt", buffer);
+            break;
+        }
 
         handleKeypress(c, cursorX, cursorY, buffer);
 
